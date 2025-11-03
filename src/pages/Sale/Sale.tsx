@@ -1,0 +1,298 @@
+import React, { useState } from "react";
+import {
+      View,
+      Text,
+      TextInput,
+      TouchableOpacity,
+      StyleSheet,
+      Alert,
+      ActivityIndicator,
+      KeyboardAvoidingView,
+      Platform,
+      ScrollView,
+} from "react-native";
+import { useSelector } from "react-redux";
+import { RootState } from "../../store";
+import axios from "axios";
+import { API_BASE_URL } from "../../config.js/Api";
+import { POST_SUPPLY_DATA, POST_SUPPLY_SPECIAL_DATA } from "../../config.js/routes";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useMutation } from "@tanstack/react-query";
+import { Picker } from "@react-native-picker/picker";
+
+type DataDetails = {
+      sellerId: number;
+      quantity: number;
+      fat: number;
+      status: string;
+};
+
+const postSupply = async (payload: DataDetails) => {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) throw new Error("No token found");
+      const res = await axios.post(`${API_BASE_URL}${POST_SUPPLY_DATA}`, payload, {
+            headers: { Authorization: `Bearer ${token}` },
+      });
+      return res.data;
+};
+
+const postSpecialSupply = async (payload: DataDetails) => {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) throw new Error("No token found");
+      const res = await axios.post(`${API_BASE_URL}${POST_SUPPLY_SPECIAL_DATA}`, payload, {
+            headers: { Authorization: `Bearer ${token}` },
+      });
+      return res.data;
+};
+
+const Sale = () => {
+      const sellerIds = useSelector((state: RootState) => state.sellers.sellerIds);
+
+      const [form, setForm] = useState({
+            sellerId: "",
+            quantity: "",
+            fat: "",
+      });
+
+      const [supplyType, setSupplyType] = useState<"normal" | "special">("normal");
+
+      const mutationNormal = useMutation({
+            mutationFn: postSupply,
+            onSuccess: () => {
+                  Alert.alert("Success", "Normal supply submitted successfully!");
+                  resetForm();
+            },
+            onError: (err: any) => {
+                  Alert.alert("Error", err.message || "Something went wrong");
+            },
+      });
+
+      const mutationSpecial = useMutation({
+            mutationFn: postSpecialSupply,
+            onSuccess: () => {
+                  Alert.alert("Success", "Special supply submitted successfully!");
+                  resetForm();
+            },
+            onError: (err: any) => {
+                  Alert.alert("Error", err.message || "Something went wrong");
+            },
+      });
+
+      const resetForm = () => {
+            setForm({ sellerId: "", quantity: "", fat: "" });
+      };
+
+      const handleSubmit = () => {
+            if (!form.sellerId || !form.quantity || !form.fat) {
+                  Alert.alert("Error", "All fields are required");
+                  return;
+            }
+
+            const payload: DataDetails = {
+                  sellerId: Number(form.sellerId),
+                  quantity: Number(form.quantity),
+                  fat: Number(form.fat),
+                  status: "Pending",
+            };
+
+            if (supplyType === "special") {
+                  mutationSpecial.mutate(payload);
+            } else {
+                  mutationNormal.mutate(payload);
+            }
+      };
+
+      const isPending = mutationNormal.isPending || mutationSpecial.isPending;
+
+      return (
+            <KeyboardAvoidingView
+    style={{ flex: 1 }}
+    behavior={Platform.OS === "ios" ? "padding" : "height"}
+  >
+    <ScrollView
+      contentContainerStyle={{ flexGrow: 1 }}
+      keyboardShouldPersistTaps="handled"
+    >
+            <View style={styles.container}>
+                  <Text style={styles.header}>New Supply Entry</Text>
+
+                  <View style={styles.card}>
+                        <Text style={styles.label}>Seller</Text>
+                        <View style={styles.pickerWrapper}>
+                              <Picker
+                                    selectedValue={form.sellerId}
+                                    onValueChange={(value) => setForm({ ...form, sellerId: value })}
+                              >
+                                    <Picker.Item label="Select Seller" value="" />
+                                    {sellerIds?.map((seller: any) => (
+                                          <Picker.Item
+                                                key={seller}
+                                                label={`Seller ${seller}`}
+                                                value={seller.toString()}
+                                          />
+                                    ))}
+                              </Picker>
+                        </View>
+
+                        <Text style={styles.label}>Quantity (litres)</Text>
+                        <TextInput
+                              style={styles.input}
+                              keyboardType="numeric"
+                              value={form.quantity}
+                              onChangeText={(text) => setForm({ ...form, quantity: text })}
+                              placeholder="Enter quantity"
+                              placeholderTextColor="#999"
+                        />
+
+                        <Text style={styles.label}>Fat (%)</Text>
+                        <TextInput
+                              style={styles.input}
+                              keyboardType="numeric"
+                              value={form.fat}
+                              onChangeText={(text) => setForm({ ...form, fat: text })}
+                              placeholder="Enter fat percentage"
+                              placeholderTextColor="#999"
+                        />
+
+                        <Text style={styles.label}>Supply Type</Text>
+                        <View style={styles.toggleContainer}>
+                              <TouchableOpacity
+                                    style={[
+                                          styles.toggleButton,
+                                          supplyType === "normal" && styles.toggleActive,
+                                    ]}
+                                    onPress={() => setSupplyType("normal")}
+                              >
+                                    <Text
+                                          style={[
+                                                styles.toggleText,
+                                                supplyType === "normal" && styles.toggleTextActive,
+                                          ]}
+                                    >
+                                          Normal
+                                    </Text>
+                              </TouchableOpacity>
+
+                              <TouchableOpacity
+                                    style={[
+                                          styles.toggleButton,
+                                          supplyType === "special" && styles.toggleActive,
+                                    ]}
+                                    onPress={() => setSupplyType("special")}
+                              >
+                                    <Text
+                                          style={[
+                                                styles.toggleText,
+                                                supplyType === "special" && styles.toggleTextActive,
+                                          ]}
+                                    >
+                                          Special
+                                    </Text>
+                              </TouchableOpacity>
+                        </View>
+
+                        <TouchableOpacity
+                              style={[styles.button, isPending && styles.buttonDisabled]}
+                              onPress={handleSubmit}
+                              disabled={isPending}
+                        >
+                              {isPending ? (
+                                    <ActivityIndicator color="#fff" />
+                              ) : (
+                                    <Text style={styles.buttonText}>Submit</Text>
+                              )}
+                        </TouchableOpacity>
+                  </View>
+            </View>
+            </ScrollView>
+            </KeyboardAvoidingView>
+      );
+};
+
+export default Sale;
+
+const styles = StyleSheet.create({
+      container: {
+            flex: 1,
+            backgroundColor: "#f8f9fb",
+            paddingHorizontal: 20,
+            paddingTop: 60,
+      },
+      header: {
+            fontSize: 24,
+            fontWeight: "700",
+            textAlign: "center",
+            marginBottom: 30,
+            color: "#222",
+      },
+      card: {
+            backgroundColor: "#fff",
+            borderRadius: 16,
+            padding: 20,
+            elevation: 4,
+            shadowColor: "#000",
+            shadowOpacity: 0.1,
+            shadowRadius: 8,
+      },
+      label: {
+            fontSize: 16,
+            color: "#444",
+            marginBottom: 8,
+            marginTop: 16,
+      },
+      input: {
+            borderWidth: 1,
+            borderColor: "#ddd",
+            borderRadius: 10,
+            paddingHorizontal: 12,
+            paddingVertical: 10,
+            fontSize: 15,
+            color: "#000",
+      },
+      pickerWrapper: {
+            borderWidth: 1,
+            borderColor: "#ddd",
+            borderRadius: 10,
+            overflow: "hidden",
+      },
+      toggleContainer: {
+            flexDirection: "row",
+            justifyContent: "space-between",
+            marginTop: 10,
+      },
+      toggleButton: {
+            flex: 1,
+            borderWidth: 1,
+            borderColor: "#007AFF",
+            borderRadius: 10,
+            paddingVertical: 10,
+            alignItems: "center",
+            marginHorizontal: 4,
+      },
+      toggleActive: {
+            backgroundColor: "#007AFF",
+      },
+      toggleText: {
+            color: "#007AFF",
+            fontSize: 15,
+            fontWeight: "600",
+      },
+      toggleTextActive: {
+            color: "#fff",
+      },
+      button: {
+            backgroundColor: "#007AFF",
+            paddingVertical: 14,
+            borderRadius: 12,
+            marginTop: 30,
+            alignItems: "center",
+      },
+      buttonDisabled: {
+            backgroundColor: "#7aa8f9",
+      },
+      buttonText: {
+            color: "#fff",
+            fontSize: 16,
+            fontWeight: "600",
+      },
+});
