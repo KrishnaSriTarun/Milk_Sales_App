@@ -6,7 +6,6 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Provider } from 'react-redux'
 import { store } from './src/store';
 import Main from './src/pages';
-import Custom from './src/pages/Custom/custom';
 
 const queryClient = new QueryClient();
 const Tab = createBottomTabNavigator();
@@ -18,7 +17,7 @@ function App() {
     <SafeAreaProvider>
       <Provider store={store}>
         <QueryClientProvider client={queryClient}>
-          <Custom />
+          <Main/>
         </QueryClientProvider>
       </Provider>
     </SafeAreaProvider>
