@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { StyleSheet, Text, View, ScrollView, ActivityIndicator, Dimensions, Button, TextInput,KeyboardAvoidingView, Platform } from "react-native";
+import { StyleSheet, Text, View, ScrollView, ActivityIndicator, Dimensions, Button, TextInput, KeyboardAvoidingView, Platform } from "react-native";
 import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -82,82 +82,77 @@ const Dashboard: React.FC = () => {
 
       const chartData = supplies.map((s) => s.quantity);
 
-
-
       return (
-              <KeyboardAvoidingView
-    style={{ flex: 1 }}
-    behavior={Platform.OS === "ios" ? "padding" : "height"}
-  >
-    <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-                  <Text style={styles.heading}>Dashboard</Text>
-                  <Button onPress={async () => { await refetch(); }} title={isFetching ? "Refreshing" : "Refresh"} />
+            <KeyboardAvoidingView style={{ flex: 1 }}behavior={Platform.OS === "ios" ? "padding" : "height"}>
+                  <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+                        <Text style={styles.heading}>Dashboard</Text>
+                        <Button onPress={async () => { await refetch(); }} title={isFetching ? "Refreshing" : "Refresh"} />
 
-                  <View style={styles.row}>
-                        <StatCard title="Total Milk" value={`${totalMilk} L`} />
-                        <StatCard title="Total Amount" value={`₹${totalAmount}`} />
-                  </View>
+                        <View style={styles.row}>
+                              <StatCard title="Total Milk" value={`${totalMilk} L`} />
+                              <StatCard title="Total Amount" value={`₹${totalAmount}`} />
+                        </View>
 
-                  <View style={styles.row}>
-                        <StatCard title="Avg Fat" value={`${avgFat}%`} />
-                        <StatCard title="Total Supplies" value={String(data.totalSupplies)} />
-                  </View>
+                        <View style={styles.row}>
+                              <StatCard title="Avg Fat" value={`${avgFat}%`} />
+                              <StatCard title="Total Supplies" value={String(data.totalSupplies)} />
+                        </View>
 
-                  <View style={styles.chartContainer}>
-                        <Text style={styles.chartTitle}>Milk Quantity Trend</Text>
-                        <LineChart
-                              data={{
-                                    labels: supplies.map((_, i) => `#${i + 1}`),
-                                    datasets: [{ data: chartData }],
-                              }}
-                              width={Dimensions.get("window").width - 30}
-                              height={220}
-                              chartConfig={{
-                                    backgroundColor: "#ffffff",
-                                    backgroundGradientFrom: "#ffffff",
-                                    backgroundGradientTo: "#ffffff",
-                                    color: () => "#2b8a3e",
-                                    labelColor: () => "#333",
-                                    strokeWidth: 2,
-                              }}
-                              bezier
-                              style={{ borderRadius: 12 }}
-                        />
-                  </View>
-                  <View style={styles.listContainer}>
-                        <Text style={styles.chartTitle}>Search User</Text>
-                        <TextInput
-                              style={styles.searchInput}
-                              placeholder="Search by Seller ID"
-                              value={searchId}
-                              onChangeText={setSearchId}
-                              keyboardType="numeric"
-                              placeholderTextColor="#888"
-                        />
-                  </View>
+                        <View style={styles.chartContainer}>
+                              <Text style={styles.chartTitle}>Milk Quantity Trend</Text>
+                              <LineChart
+                                    data={{
+                                          labels: supplies.map((_, i) => `#${i + 1}`),
+                                          datasets: [{ data: chartData }],
+                                    }}
+                                    width={Dimensions.get("window").width - 30}
+                                    height={220}
+                                    chartConfig={{
+                                          backgroundColor: "#ffffff",
+                                          backgroundGradientFrom: "#ffffff",
+                                          backgroundGradientTo: "#ffffff",
+                                          color: () => "#2b8a3e",
+                                          labelColor: () => "#333",
+                                          strokeWidth: 2,
+                                    }}
+                                    bezier
+                                    style={{ borderRadius: 12 }}
+                              />
+                        </View>
+                        <View style={styles.listContainer}>
+                              <Text style={styles.chartTitle}>Search User</Text>
+                              <TextInput
+                                    style={styles.searchInput}
+                                    placeholder="Search by Seller ID"
+                                    value={searchId}
+                                    onChangeText={setSearchId}
+                                    keyboardType="numeric"
+                                    placeholderTextColor="#888"
+                              />
+                        </View>
 
-                  <View style={styles.listContainer}>
-                        <Text style={styles.chartTitle}>Recent Supplies</Text>
-                        {filteredSupplies.length === 0 ? (
-                              <Text>No supplies found.</Text>
-                        ) : (
-                              filteredSupplies.map((item) => (
-                                    <View key={item._id} style={styles.supplyRow}>
-                                          <Text style={styles.supplyText}>Id: {item.sellerId}</Text>
-                                          <Text style={styles.supplyText}>Qty: {item.quantity} L</Text>
-                                          <Text style={styles.supplyText}>Fat: {item.fat}%</Text>
-                                          <Text style={styles.supplyText}>₹{item.amount}</Text>
-                                          <Text style={[styles.status,
-                                          item.status === "Pending" && styles.pending,
-                                          item.status === "Completed" && styles.completed,
-                                          ]}>
-                                                {item.status}
-                                          </Text>
-                                    </View>
-                              ))
-                        )}
-                  </View>
-            </ScrollView>
+                        <View style={styles.listContainer}>
+                              <Text style={styles.chartTitle}>Recent Supplies</Text>
+                              {filteredSupplies.length === 0 ? (
+                                    <Text>No supplies found.</Text>
+                              ) : (
+                                    filteredSupplies.map((item) => (
+                                          <View key={item._id} style={styles.supplyRow}>
+                                                <Text style={styles.supplyText}>Id: {item.sellerId}</Text>
+                                                <Text style={styles.supplyText}>Qty: {item.quantity} L</Text>
+                                                <Text style={styles.supplyText}>Fat: {item.fat}%</Text>
+                                                <Text style={styles.supplyText}>₹{item.amount}</Text>
+                                                <Text style={[styles.status,
+                                                item.status === "Pending" && styles.pending,
+                                                item.status === "Completed" && styles.completed,
+                                                ]}>
+                                                      {item.status}
+                                                </Text>
+                                          </View>
+                                    ))
+                              )}
+                        </View>
+                  </ScrollView>
             </KeyboardAvoidingView>
       );
 };

@@ -5,8 +5,8 @@ import User from './src/pages/RegisterForm';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Provider } from 'react-redux'
 import { store } from './src/store';
-import Login from './src/pages/Login';
 import Main from './src/pages';
+import Custom from './src/pages/Custom/custom';
 
 const queryClient = new QueryClient();
 const Tab = createBottomTabNavigator();
@@ -18,7 +18,7 @@ function App() {
     <SafeAreaProvider>
       <Provider store={store}>
         <QueryClientProvider client={queryClient}>
-          <Main />
+          <Custom />
         </QueryClientProvider>
       </Provider>
     </SafeAreaProvider>

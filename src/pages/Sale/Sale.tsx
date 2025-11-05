@@ -1,10 +1,26 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, } from "react-native";
+import {
+      View,
+      Text,
+      TextInput,
+      TouchableOpacity,
+      StyleSheet,
+      Alert,
+      ActivityIndicator,
+      KeyboardAvoidingView,
+      Platform,
+      ScrollView,
+} from "react-native";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../store";
 import axios from "axios";
 import { API_BASE_URL } from "../../config.js/Api";
-import { GET_USER, POST_SUPPLY_DATA, POST_SUPPLY_SPECIAL_DATA } from "../../config.js/routes";
+import {
+      GET_RATE,
+      GET_USER,
+      POST_SUPPLY_DATA,
+      POST_SUPPLY_SPECIAL_DATA,
+} from "../../config.js/routes";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Picker } from "@react-native-picker/picker";
@@ -22,8 +38,8 @@ type UserDetails = {
       sellerId: number;
       name: string;
       PhoneNumber: number;
-      role: 'ROLE_ADMIN' | 'ROLE_SELLER';
-}
+      role: "ROLE_ADMIN" | "ROLE_SELLER";
+};
 
 interface UsersResponse {
       sellerData: UserDetails[];
@@ -31,9 +47,18 @@ interface UsersResponse {
 }
 
 const getUsers = async (): Promise<UsersResponse> => {
-      const token = await AsyncStorage.getItem('token');
-      if (!token) throw new Error('No token found');
+      const token = await AsyncStorage.getItem("token");
+      if (!token) throw new Error("No token found");
       const res = await axios.get(`${API_BASE_URL}${GET_USER}`, {
+            headers: { Authorization: `Bearer ${token}` },
+      });
+      return res.data;
+};
+
+const getRate = async () => {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) throw new Error("No token found");
+      const res = await axios.get(`${API_BASE_URL}${GET_RATE}`, {
             headers: { Authorization: `Bearer ${token}` },
       });
       return res.data;
@@ -51,14 +76,18 @@ const postSupply = async (payload: DataDetails) => {
 const postSpecialSupply = async (payload: DataDetails) => {
       const token = await AsyncStorage.getItem("token");
       if (!token) throw new Error("No token found");
-      const res = await axios.post(`${API_BASE_URL}${POST_SUPPLY_SPECIAL_DATA}`, payload, {
-            headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await axios.post(
+            `${API_BASE_URL}${POST_SUPPLY_SPECIAL_DATA}`,
+            payload,
+            {
+                  headers: { Authorization: `Bearer ${token}` },
+            }
+      );
       return res.data;
 };
 
 const Sale = () => {
-      const dispatch = useDispatch()
+      const dispatch = useDispatch();
       const sellerIds = useSelector((state: RootState) => state.sellers.sellerIds);
 
       const [form, setForm] = useState({
@@ -68,21 +97,30 @@ const Sale = () => {
       });
 
       const [supplyType, setSupplyType] = useState<"normal" | "special">("normal");
+      const [recentSupply, setRecentSupply] = useState<DataDetails | null>(null);
+      const [calculatedAmount, setCalculatedAmount] = useState<number | null>(null);
 
-      const { data, isLoading, error } = useQuery<UsersResponse>({
-            queryKey: ['users'],
+      const { data, isLoading } = useQuery<UsersResponse>({
+            queryKey: ["users"],
             queryFn: getUsers,
+      });
+
+      const { data: rateData } = useQuery({
+            queryKey: ["rates"],
+            queryFn: getRate,
       });
 
       useEffect(() => {
             if (data) {
-                  dispatch(setSellerData(data))
+                  dispatch(setSellerData(data));
             }
-      })
+      }, [data]);
 
       const mutationNormal = useMutation({
             mutationFn: postSupply,
-            onSuccess: () => {
+            onSuccess: (_, variables) => {
+                  handleCalculation(variables);
+                  setRecentSupply(variables);
                   Alert.alert("Success", "Normal supply submitted successfully!");
                   resetForm();
             },
@@ -93,7 +131,9 @@ const Sale = () => {
 
       const mutationSpecial = useMutation({
             mutationFn: postSpecialSupply,
-            onSuccess: () => {
+            onSuccess: (_, variables) => {
+                  handleCalculation(variables);
+                  setRecentSupply(variables);
                   Alert.alert("Success", "Special supply submitted successfully!");
                   resetForm();
             },
@@ -104,6 +144,14 @@ const Sale = () => {
 
       const resetForm = () => {
             setForm({ sellerId: "", quantity: "", fat: "" });
+      };
+
+      const handleCalculation = (payload: DataDetails) => {
+            if (!rateData) return;
+            const rate =
+                  supplyType === "special" ? rateData.specialRate : rateData.rate;
+            const total = payload.fat * rate * payload.quantity;
+            setCalculatedAmount(total);
       };
 
       const handleSubmit = () => {
@@ -125,6 +173,7 @@ const Sale = () => {
                   mutationNormal.mutate(payload);
             }
       };
+
       if (isLoading) {
             return (
                   <View style={styles.center}>
@@ -159,7 +208,7 @@ const Sale = () => {
                                                 {sellerIds?.map((seller: any) => (
                                                       <Picker.Item
                                                             key={seller}
-                                                            label={seller}
+                                                            label={seller.toString()}
                                                             value={seller.toString()}
                                                       />
                                                 ))}
@@ -234,6 +283,50 @@ const Sale = () => {
                                                 <Text style={styles.buttonText}>Submit</Text>
                                           )}
                                     </TouchableOpacity>
+
+                                    {/* Recently Submitted Card */}
+                                    {recentSupply && (
+                                          <View style={styles.recentCard}>
+                                                <Text style={styles.recentTitle}>Recently Submitted</Text>
+                                                <View style={styles.recentRow}>
+                                                      <Text style={styles.recentLabel}>Seller ID:</Text>
+                                                      <Text style={styles.recentValue}>
+                                                            {recentSupply.sellerId}
+                                                      </Text>
+                                                </View>
+                                                <View style={styles.recentRow}>
+                                                      <Text style={styles.recentLabel}>Quantity:</Text>
+                                                      <Text style={styles.recentValue}>
+                                                            {recentSupply.quantity} L
+                                                      </Text>
+                                                </View>
+                                                <View style={styles.recentRow}>
+                                                      <Text style={styles.recentLabel}>Fat:</Text>
+                                                      <Text style={styles.recentValue}>{recentSupply.fat}%</Text>
+                                                </View>
+                                                <View style={styles.recentRow}>
+                                                      <Text style={styles.recentLabel}>Type:</Text>
+                                                      <Text style={styles.recentValue}>
+                                                            {supplyType === "special" ? "Special" : "Normal"}
+                                                      </Text>
+                                                </View>
+                                                <View style={styles.recentRow}>
+                                                      <Text style={styles.recentLabel}>Rate:</Text>
+                                                      <Text style={styles.recentValue}>
+                                                            {supplyType === "special"
+                                                                  ? rateData?.specialRate
+                                                                  : rateData?.rate}{" "}
+                                                            ₹
+                                                      </Text>
+                                                </View>
+                                                <View style={styles.recentRow}>
+                                                      <Text style={styles.recentLabel}>Amount:</Text>
+                                                      <Text style={styles.recentValue}>
+                                                            {calculatedAmount ? calculatedAmount.toFixed(2) + " ₹" : "--"}
+                                                      </Text>
+                                                </View>
+                                          </View>
+                                    )}
                               </View>
                         </View>
                   </ScrollView>
@@ -252,8 +345,8 @@ const styles = StyleSheet.create({
       },
       center: {
             flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
+            justifyContent: "center",
+            alignItems: "center",
       },
       header: {
             fontSize: 24,
@@ -330,6 +423,33 @@ const styles = StyleSheet.create({
       buttonText: {
             color: "#fff",
             fontSize: 16,
+            fontWeight: "600",
+      },
+      recentCard: {
+            marginTop: 25,
+            backgroundColor: "#e7f0ff",
+            borderRadius: 12,
+            padding: 15,
+            borderWidth: 1,
+            borderColor: "#cbd9ff",
+      },
+      recentTitle: {
+            fontSize: 18,
+            fontWeight: "700",
+            color: "#007AFF",
+            marginBottom: 10,
+      },
+      recentRow: {
+            flexDirection: "row",
+            justifyContent: "space-between",
+            marginBottom: 6,
+      },
+      recentLabel: {
+            color: "#333",
+            fontWeight: "500",
+      },
+      recentValue: {
+            color: "#000",
             fontWeight: "600",
       },
 });
