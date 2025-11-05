@@ -1,5 +1,5 @@
-import React from "react";
-import { StyleSheet, Text, View, ScrollView, ActivityIndicator, Dimensions, Button } from "react-native";
+import React, { useState } from "react";
+import { StyleSheet, Text, View, ScrollView, ActivityIndicator, Dimensions, Button, TextInput,KeyboardAvoidingView, Platform } from "react-native";
 import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -43,6 +43,8 @@ const getSupplyData = async (): Promise<SupplyResponse> => {
 
 // Component
 const Dashboard: React.FC = () => {
+      const [searchId, setSearchId] = React.useState("");
+
       const { data, isLoading, error, refetch, isFetching } = useQuery<SupplyResponse>({
             queryKey: ["supply"],
             queryFn: getSupplyData,
@@ -68,6 +70,10 @@ const Dashboard: React.FC = () => {
       }
 
       const supplies = data.supplies || [];
+      const filteredSupplies = searchId
+            ? supplies.filter((s) => String(s.sellerId).includes(searchId))
+            : supplies;
+
       const totalMilk = supplies.reduce((sum, s) => sum + s.quantity, 0);
       const totalAmount = supplies.reduce((sum, s) => sum + s.amount, 0);
       const avgFat = supplies.length
@@ -76,8 +82,14 @@ const Dashboard: React.FC = () => {
 
       const chartData = supplies.map((s) => s.quantity);
 
+
+
       return (
-            <ScrollView contentContainerStyle={styles.scroll}>
+              <KeyboardAvoidingView
+    style={{ flex: 1 }}
+    behavior={Platform.OS === "ios" ? "padding" : "height"}
+  >
+    <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
                   <Text style={styles.heading}>Dashboard</Text>
                   <Button onPress={async () => { await refetch(); }} title={isFetching ? "Refreshing" : "Refresh"} />
 
@@ -112,13 +124,24 @@ const Dashboard: React.FC = () => {
                               style={{ borderRadius: 12 }}
                         />
                   </View>
+                  <View style={styles.listContainer}>
+                        <Text style={styles.chartTitle}>Search User</Text>
+                        <TextInput
+                              style={styles.searchInput}
+                              placeholder="Search by Seller ID"
+                              value={searchId}
+                              onChangeText={setSearchId}
+                              keyboardType="numeric"
+                              placeholderTextColor="#888"
+                        />
+                  </View>
 
                   <View style={styles.listContainer}>
                         <Text style={styles.chartTitle}>Recent Supplies</Text>
-                        {supplies.length === 0 ? (
+                        {filteredSupplies.length === 0 ? (
                               <Text>No supplies found.</Text>
                         ) : (
-                              supplies.map((item) => (
+                              filteredSupplies.map((item) => (
                                     <View key={item._id} style={styles.supplyRow}>
                                           <Text style={styles.supplyText}>Id: {item.sellerId}</Text>
                                           <Text style={styles.supplyText}>Qty: {item.quantity} L</Text>
@@ -135,6 +158,7 @@ const Dashboard: React.FC = () => {
                         )}
                   </View>
             </ScrollView>
+            </KeyboardAvoidingView>
       );
 };
 
@@ -227,6 +251,18 @@ const styles = StyleSheet.create({
             borderBottomWidth: 0.5,
             borderBottomColor: "#ddd",
       },
+      searchInput: {
+            backgroundColor: "#fff",
+            borderRadius: 8,
+            padding: 10,
+            marginBottom: 15,
+            borderWidth: 1,
+            borderColor: "#ccc",
+            fontSize: 16,
+            color: "#333",
+            marginTop: 10
+      },
+
       supplyText: {
             color: "#333",
             fontSize: 14,

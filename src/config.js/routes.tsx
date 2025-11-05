@@ -13,3 +13,6 @@ export const  GET_USER: string = '/api/v0.1/user';
 export const  GET_SUPPLY_DATA: string = '/api/v0.1/Supply';
 export const  POST_SUPPLY_DATA: string = '/api/v0.1/Supply/add';
 export const  POST_SUPPLY_SPECIAL_DATA: string = '/api/v0.1/Supply/addSpecial';
+export const  GET_SUPPLY_BY_RANGE: string = '/api/v0.1/Supply/Range';
+export const  DELETE_SUPPLY: string = '/api/v0.1/Supply';
+export const  UPDATE_SUPPLY_STATUS: string = '/api/v0.1/Supply/markCompleted';

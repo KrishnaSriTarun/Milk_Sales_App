@@ -1,30 +1,42 @@
-import React, { useState } from "react";
-import {
-      View,
-      Text,
-      TextInput,
-      TouchableOpacity,
-      StyleSheet,
-      Alert,
-      ActivityIndicator,
-      KeyboardAvoidingView,
-      Platform,
-      ScrollView,
-} from "react-native";
-import { useSelector } from "react-redux";
+import React, { useEffect, useState } from "react";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, } from "react-native";
+import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../store";
 import axios from "axios";
 import { API_BASE_URL } from "../../config.js/Api";
-import { POST_SUPPLY_DATA, POST_SUPPLY_SPECIAL_DATA } from "../../config.js/routes";
+import { GET_USER, POST_SUPPLY_DATA, POST_SUPPLY_SPECIAL_DATA } from "../../config.js/routes";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Picker } from "@react-native-picker/picker";
+import { setSellerData } from "../../redux/user";
 
 type DataDetails = {
       sellerId: number;
       quantity: number;
       fat: number;
       status: string;
+};
+
+type UserDetails = {
+      _id: string;
+      sellerId: number;
+      name: string;
+      PhoneNumber: number;
+      role: 'ROLE_ADMIN' | 'ROLE_SELLER';
+}
+
+interface UsersResponse {
+      sellerData: UserDetails[];
+      sellerIds: number[];
+}
+
+const getUsers = async (): Promise<UsersResponse> => {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) throw new Error('No token found');
+      const res = await axios.get(`${API_BASE_URL}${GET_USER}`, {
+            headers: { Authorization: `Bearer ${token}` },
+      });
+      return res.data;
 };
 
 const postSupply = async (payload: DataDetails) => {
@@ -46,6 +58,7 @@ const postSpecialSupply = async (payload: DataDetails) => {
 };
 
 const Sale = () => {
+      const dispatch = useDispatch()
       const sellerIds = useSelector((state: RootState) => state.sellers.sellerIds);
 
       const [form, setForm] = useState({
@@ -55,6 +68,17 @@ const Sale = () => {
       });
 
       const [supplyType, setSupplyType] = useState<"normal" | "special">("normal");
+
+      const { data, isLoading, error } = useQuery<UsersResponse>({
+            queryKey: ['users'],
+            queryFn: getUsers,
+      });
+
+      useEffect(() => {
+            if (data) {
+                  dispatch(setSellerData(data))
+            }
+      })
 
       const mutationNormal = useMutation({
             mutationFn: postSupply,
@@ -101,110 +125,118 @@ const Sale = () => {
                   mutationNormal.mutate(payload);
             }
       };
+      if (isLoading) {
+            return (
+                  <View style={styles.center}>
+                        <ActivityIndicator size="large" />
+                        <Text>Loading users...</Text>
+                  </View>
+            );
+      }
 
       const isPending = mutationNormal.isPending || mutationSpecial.isPending;
 
       return (
             <KeyboardAvoidingView
-    style={{ flex: 1 }}
-    behavior={Platform.OS === "ios" ? "padding" : "height"}
-  >
-    <ScrollView
-      contentContainerStyle={{ flexGrow: 1 }}
-      keyboardShouldPersistTaps="handled"
-    >
-            <View style={styles.container}>
-                  <Text style={styles.header}>New Supply Entry</Text>
+                  style={{ flex: 1 }}
+                  behavior={Platform.OS === "ios" ? "padding" : "height"}
+            >
+                  <ScrollView
+                        contentContainerStyle={{ flexGrow: 1 }}
+                        keyboardShouldPersistTaps="handled"
+                  >
+                        <View style={styles.container}>
+                              <Text style={styles.header}>New Supply Entry</Text>
 
-                  <View style={styles.card}>
-                        <Text style={styles.label}>Seller</Text>
-                        <View style={styles.pickerWrapper}>
-                              <Picker
-                                    selectedValue={form.sellerId}
-                                    onValueChange={(value) => setForm({ ...form, sellerId: value })}
-                              >
-                                    <Picker.Item label="Select Seller" value="" />
-                                    {sellerIds?.map((seller: any) => (
-                                          <Picker.Item
-                                                key={seller}
-                                                label={`Seller ${seller}`}
-                                                value={seller.toString()}
-                                          />
-                                    ))}
-                              </Picker>
-                        </View>
+                              <View style={styles.card}>
+                                    <Text style={styles.label}>Seller</Text>
+                                    <View style={styles.pickerWrapper}>
+                                          <Picker
+                                                selectedValue={form.sellerId}
+                                                onValueChange={(value) => setForm({ ...form, sellerId: value })}
+                                          >
+                                                <Picker.Item label="Select Seller" value="" />
+                                                {sellerIds?.map((seller: any) => (
+                                                      <Picker.Item
+                                                            key={seller}
+                                                            label={seller}
+                                                            value={seller.toString()}
+                                                      />
+                                                ))}
+                                          </Picker>
+                                    </View>
 
-                        <Text style={styles.label}>Quantity (litres)</Text>
-                        <TextInput
-                              style={styles.input}
-                              keyboardType="numeric"
-                              value={form.quantity}
-                              onChangeText={(text) => setForm({ ...form, quantity: text })}
-                              placeholder="Enter quantity"
-                              placeholderTextColor="#999"
-                        />
+                                    <Text style={styles.label}>Quantity (litres)</Text>
+                                    <TextInput
+                                          style={styles.input}
+                                          keyboardType="numeric"
+                                          value={form.quantity}
+                                          onChangeText={(text) => setForm({ ...form, quantity: text })}
+                                          placeholder="Enter quantity"
+                                          placeholderTextColor="#999"
+                                    />
 
-                        <Text style={styles.label}>Fat (%)</Text>
-                        <TextInput
-                              style={styles.input}
-                              keyboardType="numeric"
-                              value={form.fat}
-                              onChangeText={(text) => setForm({ ...form, fat: text })}
-                              placeholder="Enter fat percentage"
-                              placeholderTextColor="#999"
-                        />
+                                    <Text style={styles.label}>Fat (%)</Text>
+                                    <TextInput
+                                          style={styles.input}
+                                          keyboardType="numeric"
+                                          value={form.fat}
+                                          onChangeText={(text) => setForm({ ...form, fat: text })}
+                                          placeholder="Enter fat percentage"
+                                          placeholderTextColor="#999"
+                                    />
 
-                        <Text style={styles.label}>Supply Type</Text>
-                        <View style={styles.toggleContainer}>
-                              <TouchableOpacity
-                                    style={[
-                                          styles.toggleButton,
-                                          supplyType === "normal" && styles.toggleActive,
-                                    ]}
-                                    onPress={() => setSupplyType("normal")}
-                              >
-                                    <Text
-                                          style={[
-                                                styles.toggleText,
-                                                supplyType === "normal" && styles.toggleTextActive,
-                                          ]}
+                                    <Text style={styles.label}>Supply Type</Text>
+                                    <View style={styles.toggleContainer}>
+                                          <TouchableOpacity
+                                                style={[
+                                                      styles.toggleButton,
+                                                      supplyType === "normal" && styles.toggleActive,
+                                                ]}
+                                                onPress={() => setSupplyType("normal")}
+                                          >
+                                                <Text
+                                                      style={[
+                                                            styles.toggleText,
+                                                            supplyType === "normal" && styles.toggleTextActive,
+                                                      ]}
+                                                >
+                                                      Normal
+                                                </Text>
+                                          </TouchableOpacity>
+
+                                          <TouchableOpacity
+                                                style={[
+                                                      styles.toggleButton,
+                                                      supplyType === "special" && styles.toggleActive,
+                                                ]}
+                                                onPress={() => setSupplyType("special")}
+                                          >
+                                                <Text
+                                                      style={[
+                                                            styles.toggleText,
+                                                            supplyType === "special" && styles.toggleTextActive,
+                                                      ]}
+                                                >
+                                                      Special
+                                                </Text>
+                                          </TouchableOpacity>
+                                    </View>
+
+                                    <TouchableOpacity
+                                          style={[styles.button, isPending && styles.buttonDisabled]}
+                                          onPress={handleSubmit}
+                                          disabled={isPending}
                                     >
-                                          Normal
-                                    </Text>
-                              </TouchableOpacity>
-
-                              <TouchableOpacity
-                                    style={[
-                                          styles.toggleButton,
-                                          supplyType === "special" && styles.toggleActive,
-                                    ]}
-                                    onPress={() => setSupplyType("special")}
-                              >
-                                    <Text
-                                          style={[
-                                                styles.toggleText,
-                                                supplyType === "special" && styles.toggleTextActive,
-                                          ]}
-                                    >
-                                          Special
-                                    </Text>
-                              </TouchableOpacity>
+                                          {isPending ? (
+                                                <ActivityIndicator color="#fff" />
+                                          ) : (
+                                                <Text style={styles.buttonText}>Submit</Text>
+                                          )}
+                                    </TouchableOpacity>
+                              </View>
                         </View>
-
-                        <TouchableOpacity
-                              style={[styles.button, isPending && styles.buttonDisabled]}
-                              onPress={handleSubmit}
-                              disabled={isPending}
-                        >
-                              {isPending ? (
-                                    <ActivityIndicator color="#fff" />
-                              ) : (
-                                    <Text style={styles.buttonText}>Submit</Text>
-                              )}
-                        </TouchableOpacity>
-                  </View>
-            </View>
-            </ScrollView>
+                  </ScrollView>
             </KeyboardAvoidingView>
       );
 };
@@ -217,6 +249,11 @@ const styles = StyleSheet.create({
             backgroundColor: "#f8f9fb",
             paddingHorizontal: 20,
             paddingTop: 60,
+      },
+      center: {
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
       },
       header: {
             fontSize: 24,
